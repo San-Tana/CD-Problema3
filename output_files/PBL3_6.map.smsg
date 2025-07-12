@@ -1,0 +1,1 @@
+Info (10281): Verilog HDL Declaration information at divisor_clk_17x.v(4): object "clk_OUT" differs only in case from object "clk_out" in the same scope File: /home/aluno/Documentos/PBL_3.7/divisor_clk_17x.v Line: 4

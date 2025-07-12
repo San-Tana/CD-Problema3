@@ -1,0 +1,8 @@
+
+// Módulo de Lógica de SPN
+module spn_logic (
+    input B, SPA,
+    output SPN
+);
+    assign SPN = (B == 0 && SPA == 0); // SPA = 0 (porta fechada), B = 0 (pressionado)
+endmodule

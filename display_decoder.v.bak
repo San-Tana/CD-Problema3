@@ -1,0 +1,33 @@
+// Módulo de Display (7 Segmentos)
+module display_decoder (
+    input [1:0] state,
+    input [1:0] error_count,
+    input AL, AF, EM,
+    output reg [6:0] HEX0, HEX1, HEX2, HEX3, HEX4, HEX5
+);
+    // Decodificação para 7 segmentos (exemplo simplificado)
+    always @(*) begin
+        // HEX0-HEX1: AB, PF, FE
+        case (state)
+Orm<// HEX0-HEX1: AB, PF, FE
+        2'b00: begin HEX0 = 7'b0001000; HEX1 = 7'b1000001; end // AB (A, b)
+        2'b01: begin HEX0 = 7'b0111000; HEX1 = 7'b0001100; end // FE (F, E)
+        2'b10: begin HEX0 = 7'b0011000; HEX1 = 7'b1111001; end // PF (P, F)
+        default: begin HEX0 = 7'b1111111; HEX1 = 7'b1111111; end // Desligado
+        endcase
+
+        // HEX2-HEX3: AF, AL, EM
+        if (AF) begin HEX2 = 7'b0001000; HEX3 = 7'b0111111; end // AF (A, F)
+        else if (AL) begin HEX2 = 7'b0001000; HEX3 = 7'b0110000; end // AL (A, L)
+        else if (EM) begin HEX2 = 7'b0000110; HEX3 = 7'b1001111; end // EM (E, M)
+        else begin HEX2 = 7'b1111111; HEX3 = 7'b1111111; end // Desligado
+
+        // HEX4-HEX5: E1, E2, BL
+        case (error_count)
+        2'b01: begin HEX4 = 7'b0000110; HEX5 = 7'b1111001; end // E1 (E, 1)
+        2'b10: begin HEX4 = 7'b0000110; HEX5 = 7'b1011011; end // E2 (E, 2)
+        2'b11: begin HEX4 = 7'b0000000; HEX5 = 7'b0110000; end // BL (B, L)
+        default: begin HEX4 = 7'b1111111; HEX5 = 7'b1111111; end // Desligado
+        endcase
+    end
+endmodule

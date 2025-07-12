@@ -1,0 +1,130 @@
+// Módulo Principal: Cofre
+module cofre (
+    input clk, reset, A, B, H, SAF, SPA, // Entradas
+    input [3:0] SENHA,                  // Senha de 4 bits
+    output [6:0] HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, // Displays de 7 segmentos
+    output reg CLOSE                    // LED para pino de travamento
+);
+    // Definir estados da MEF
+    typedef enum reg [1:0] {
+        AB = 2'b00, // Aberto
+        FE = 2'b01, // Fechado Normal
+        PF = 2'b10  // Fechado Remotamente
+    } state_t;
+
+    reg [1:0] state, next_state;
+    wire senha_ok;          // Sinal da senha (1 = correta, 0 = errada)
+    wire SPN;               // Sinal do sensor de pino
+    wire [1:0] error_count; // Contador de erros (00, 01, 10, 11)
+    wire AL, AF, EM;        // Sinais de transição
+
+    // Instanciar submódulos
+    senha_validator senha_mod (
+        .SENHA(SENHA),
+        .B(B),
+        .error_count(error_count),
+        .reset(reset),
+        .clk(clk),
+        .senha_ok(senha_ok)
+    );
+
+    spn_logic spn_mod (
+        .B(B),
+        .SPA(SPA),
+        .SPN(SPN)
+    );
+
+    error_counter err_mod (
+        .senha_ok(senha_ok),
+        .B(B),
+        .state(state),
+        .clk(clk),
+        .reset(reset),
+        .error_count(error_count)
+    );
+
+    display_decoder disp_mod (
+        .state(state),
+        .error_count(error_count),
+        .AL(AL),
+        .AF(AF),
+        .EM(EM),
+        .HEX0(HEX0),
+        .HEX1(HEX1),
+        .HEX2(HEX2),
+        .HEX3(HEX3),
+        .HEX4(HEX4),
+        .HEX5(HEX5)
+    );
+
+    // Lógica de transição para AF, AL, EM
+    assign AL = (state == FE && senha_ok && SPN); // Transição de FE para AB
+    assign AF = (state == PF && SAF);            // Transição de PF para AB
+    assign EM = (H && (state == FE || state == PF)); // Chave mestra
+
+    // Bloco 1: Registro de estado
+    always @(posedge clk or posedge reset) begin
+        if (reset || H)
+            state <= AB; // Estado inicial ou emergência
+        else
+            state <= next_state;
+    end
+
+    // Bloco 2: Lógica de próximo estado
+    always @(*) begin
+        case (state)
+            AB: begin
+                if (A == 0 && senha_ok && SPN)
+                    next_state = FE; // Fechado Normal
+                else if (A == 1 && senha_ok && SPN)
+                    next_state = PF; // Fechado Remotamente
+                else
+                    next_state = AB; // Mantém Aberto
+            end
+            FE: begin
+                if (senha_ok && SPN)
+                    next_state = AB; // Abre
+                else
+                    next_state = FE; // Mantém Fechado Normal
+            end
+            PF: begin
+                if (SAF)
+                    next_state = AB; // Abre remotamente
+                else
+                    next_state = PF; // Mantém Fechado Remotamente
+            end
+            default: next_state = AB;
+        endcase
+    end
+
+    // Bloco 3: Lógica de saída
+    always @(*) begin
+        CLOSE = (state == FE || state == PF); // Ativa pino em FE ou PF
+    end
+endmodule
+
+// Módulo de Validação de Senha
+module senha_validator (
+    input [3:0] SENHA,
+    input B, clk, reset,
+    input [1:0] error_count,
+    output reg senha_ok
+);
+    reg [3:0] senha_armazenada;
+
+    // Armazenar senha
+    always @(posedge clk or posedge reset) begin
+        if (reset)
+            senha_armazenada <= 4'b0000; // Zera senha
+        else if (B == 0 && error_count != 2'b11)
+            senha_armazenada <= SENHA; // Armazena nova senha
+    end
+
+    // Comparar senha
+    always @(*) begin
+        if (error_count == 2'b11)
+            senha_ok = 0; // Bloqueado
+        else
+            senha_ok = (SENHA == senha_armazenada && B == 0) ? 1 : 0;
+    end
+endmodule

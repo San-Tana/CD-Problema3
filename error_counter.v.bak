@@ -1,0 +1,15 @@
+
+// Módulo de Contador de Erros
+module error_counter (
+    input senha_ok, B, clk, reset,
+    input [1:0] state,
+    output reg [1:0] error_count
+);
+    always @(posedge clk or posedge reset) begin
+        if (reset || state == 2'b00) // Zera contador em AB ou reset
+            error_count <= 2'b00;
+        else if (B == 0 && !senha_ok && error_count != 2'b11)
+            error_count <= error_count + 1; // Incrementa em erro
+    end
+endmodule
+
